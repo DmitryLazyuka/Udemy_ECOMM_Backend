@@ -53,17 +53,23 @@ public class JwtUtils {
 
     public ResponseCookie generateJwtCookie(UserDetailsImpl userDetails) {
         String jwt = generateTokenFromUsername(userDetails.getUsername());
+
         return ResponseCookie.from(JwtCookie, jwt)
-                .path("/api")
+                .path("/")
                 .maxAge(24 * 60 * 60)
-                .httpOnly(false)
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
                 .build();
     }
 
     public ResponseCookie getCleanJwtCookie() {
-        return ResponseCookie.from(JwtCookie, null)
-                .path("/api")
-                .httpOnly(false)
+        return ResponseCookie.from(JwtCookie, "")
+                .path("/")
+                .maxAge(0)
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
                 .build();
     }
 

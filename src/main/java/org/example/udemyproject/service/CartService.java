@@ -1,6 +1,7 @@
 package org.example.udemyproject.service;
 
 import org.example.udemyproject.payload.CartDTO;
+import org.example.udemyproject.payload.CartItemDTO;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -18,5 +19,7 @@ public interface CartService {
     String deleteProductFromCart(Long cartId, Long productId);
 
     void updateProductInCarts(Long cartId, Long productId);
+
+    String createOrUpdateCartWithItems(List<CartItemDTO> cartItems);
 }
 

@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.example.udemyproject.model.Cart;
 import org.example.udemyproject.payload.APIResponse;
 import org.example.udemyproject.payload.CartDTO;
+import org.example.udemyproject.payload.CartItemDTO;
 import org.example.udemyproject.repository.CartRepository;
 import org.example.udemyproject.service.CartService;
 import org.example.udemyproject.util.AuthUtil;
@@ -35,6 +36,12 @@ public class CartController {
 
     @Autowired
     private CartRepository cartRepository;
+
+    @PostMapping("/cart/create")
+    public ResponseEntity<String> createOrUpdateCart(@RequestBody List<CartItemDTO> cartItems) {
+        String response = cartService.createOrUpdateCartWithItems(cartItems);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
 
     @PostMapping("/carts/products/{productId}/quantity/{quantity}")
     @Operation(summary = "Add product to cart", description = "Adds a product to the authenticated user's cart.")
