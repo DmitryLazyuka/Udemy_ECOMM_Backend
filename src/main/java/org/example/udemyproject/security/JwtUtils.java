@@ -98,7 +98,6 @@ public class JwtUtils {
 
     public boolean validateToken(String token) {
         try {
-            System.out.println("Validate token");
             Jwts.parser().verifyWith((SecretKey) key())
                     .build().parseSignedClaims(token);
             return true;

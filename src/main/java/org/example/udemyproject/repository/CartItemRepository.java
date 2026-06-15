@@ -1,6 +1,5 @@
 package org.example.udemyproject.repository;
 
-import org.example.udemyproject.model.Cart;
 import org.example.udemyproject.model.CartItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -8,13 +7,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Repository
 public interface CartItemRepository extends JpaRepository<CartItem, Long> {
 
-    @Query("SELECT ci FROM CartItem ci WHERE ci.cart.cartId = ?1 AND ci.product.productId = ?2")
-    CartItem findCartItemByProductIdAndCartId(Long cartId, Long productId);
+    @Query("SELECT ci FROM CartItem ci WHERE ci.product.productId = ?1 AND ci.cart.cartId = ?2")
+    CartItem findCartItemByProductIdAndCartId(Long productId, Long cartId);
 
     @Modifying
     @Transactional
@@ -24,5 +21,5 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     @Modifying
     @Transactional
     @Query("DELETE FROM CartItem ci WHERE ci.cart.cartId = ?1")
-    List<Cart> deleteAllByCartId(Long cartId);
+    void deleteAllByCartId(Long cartId);
 }

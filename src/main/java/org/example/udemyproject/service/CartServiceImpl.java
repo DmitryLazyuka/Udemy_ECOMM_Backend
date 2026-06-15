@@ -168,7 +168,7 @@ public class CartServiceImpl implements CartService {
             throw new APIException("The resulting quantity can not be negative");
         }
         if (newQuantity == 0) {
-            deleteProductFromCart(productId, cartId);
+            deleteProductFromCart(cartId, productId);
         } else {
             cartItem.setProductPrice(product.getSpecialPrice());
             cartItem.setQuantity(cartItem.getQuantity() + quantity);
