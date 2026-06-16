@@ -247,6 +247,41 @@ public class ProductServiceImpl implements ProductService {
         return modelMapper.map(savedProduct, ProductDTO.class);
     }
 
+    @Override
+    public ProductResponse getAllProductsForAdmin(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+
+
+        Page<Product> productPage = productRepository.findAll(pageable);
+        List<Product> products = productPage.getContent();
+        if (products.isEmpty()) {
+            throw new APIException("No products found");
+        }
+
+        List<ProductDTO> productDTOS = products.stream()
+                .map(p -> {
+                            ProductDTO productDTO = modelMapper.map(p, ProductDTO.class);
+                            productDTO.setImage(constructImageUrl(p.getImage()));
+                            return productDTO;
+                        }
+                )
+                .toList();
+
+        ProductResponse productResponse = new ProductResponse();
+
+        productResponse.setContent(productDTOS);
+        productResponse.setPageNumber(productPage.getNumber());
+        productResponse.setPageSize(productPage.getSize());
+        productResponse.setTotalPages(productPage.getTotalPages());
+        productResponse.setTotalElements(productPage.getTotalElements());
+        productResponse.setLastPage(productPage.isLast());
+
+        return productResponse;
+    }
+
     private Double countSpecialPrice(Double price, Double discount) {
         return price - ((discount * 0.01) * price);
     }
