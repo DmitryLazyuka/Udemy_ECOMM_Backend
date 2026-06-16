@@ -78,7 +78,7 @@ public class OrderServiceImpl implements OrderService {
         order.setEmail(emailId);
         order.setDate(LocalDate.now());
         order.setTotalAmount(cart.getTotalPrice());
-        order.setOrderStatus("Order Accepted");
+        order.setOrderStatus("Accepted");
         order.setAddress(address);
 
         Payment payment = new Payment();
@@ -174,6 +174,13 @@ public class OrderServiceImpl implements OrderService {
         response.setLastPage(pageOrders.isLast());
 
         return response;
+    }
+
+    @Override
+    public OrderDTO updateOrder(Long orderId, String status) {
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Order", "orderId", orderId));
+        order.setOrderStatus(status);
+        return modelMapper.map(orderRepository.save(order), OrderDTO.class);
     }
 }
 

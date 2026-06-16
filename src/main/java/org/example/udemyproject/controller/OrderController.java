@@ -11,15 +11,15 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.example.udemyproject.config.AppConstants;
 import org.example.udemyproject.payload.*;
+import org.example.udemyproject.security.services.UserDetailsImpl;
 import org.example.udemyproject.service.OrderService;
 import org.example.udemyproject.service.StripeService;
 import org.example.udemyproject.util.AuthUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -78,5 +78,12 @@ public class OrderController {
     ) {
      OrderResponse response = orderService.getAllOrders(pageNumber, pageSize, sortBy, sortOrder);
      return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @PutMapping("/admin/orders/{orderId}/status")
+    public ResponseEntity<OrderDTO> updateOrderStatus(@PathVariable Long orderId,
+                                                      @RequestBody OrderStatusUpdateDto orderStatusUpdateDto){
+        OrderDTO order = orderService.updateOrder(orderId, orderStatusUpdateDto.getStatus());
+        return new ResponseEntity<>(order, HttpStatus.OK);
     }
 }
