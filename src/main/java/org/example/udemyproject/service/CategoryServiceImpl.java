@@ -6,6 +6,7 @@ import org.example.udemyproject.model.Category;
 import org.example.udemyproject.payload.CategoryDTO;
 import org.example.udemyproject.payload.CategoryResponse;
 import org.example.udemyproject.repository.CategoryRepository;
+import org.example.udemyproject.repository.ProductRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,9 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private ProductRepository productRepository;
 
     @Override
     public CategoryResponse getAllCategories(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
@@ -65,7 +69,12 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "categoryId", categoryId));
 
+        if (productRepository.existsByCategoryCategoryId(categoryId)) {
+            throw new APIException("Cannot delete category because it contains products");
+        }
+
         categoryRepository.delete(category);
+
         return modelMapper.map(category, CategoryDTO.class);
     }
 
