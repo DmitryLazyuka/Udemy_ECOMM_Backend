@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class StripeServiceImpl implements StripeService {
 
-    @Value("${stripe-secret-key}")
+    @Value("${stripe.secret.key}")
     private String stripeApiKey;
 
     @PostConstruct

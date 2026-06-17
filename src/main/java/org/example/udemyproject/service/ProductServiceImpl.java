@@ -31,6 +31,9 @@ public class ProductServiceImpl implements ProductService {
     @Value("${image.base.url}")
     private String imageBaseUrl;
 
+    @Value("${project.image}")
+    private String path;
+
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ModelMapper modelMapper;
@@ -38,9 +41,6 @@ public class ProductServiceImpl implements ProductService {
     private final CartRepository cartRepository;
     private final CartService cartService;
     private final AuthUtil authUtil;
-
-    @Value("${project.image}")
-    private String path;
 
     public ProductServiceImpl(ProductRepository productRepository,
                               CategoryRepository categoryRepository,
@@ -69,11 +69,14 @@ public class ProductServiceImpl implements ProductService {
 
         Product product = modelMapper.map(productDTO, Product.class);
 
+        product.setActive(true);
         product.setImage("default.png");
         product.setCategory(category);
         product.setUser(authUtil.loggedInUser());
         product.setSpecialPrice(countSpecialPrice(product.getPrice(), product.getDiscount()));
+
         Product savedProduct = productRepository.save(product);
+
         return modelMapper.map(savedProduct, ProductDTO.class);
     }
 
@@ -86,19 +89,26 @@ public class ProductServiceImpl implements ProductService {
                                           String category) {
         Pageable pageable = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
 
-        Specification<Product> spec = Specification.unrestricted();
+        Specification<Product> spec = (root, query, criteriaBuilder) ->
+                criteriaBuilder.isTrue(root.get("active"));
 
         if (keyword != null && !keyword.isEmpty()) {
             spec = spec.and((root, query, criteriaBuilder) ->
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("productName")), "%" + keyword.toLowerCase() + "%"));
+                    criteriaBuilder.like(
+                            criteriaBuilder.lower(root.get("productName")),
+                            "%" + keyword.toLowerCase() + "%"
+                    ));
         }
+
         if (category != null && !category.isEmpty()) {
             spec = spec.and((root, query, criteriaBuilder) ->
                     criteriaBuilder.like(root.get("category").get("categoryName"), category));
         }
 
         Page<Product> productPage = productRepository.findAll(spec, pageable);
+
         List<Product> products = productPage.getContent();
+
         if (products.isEmpty()) {
             throw new APIException("No products found");
         }
@@ -108,10 +118,6 @@ public class ProductServiceImpl implements ProductService {
                 .toList();
 
         return buildProductResponse(productPage, productDTOS);
-    }
-
-    private String constructImageUrl(String imageName) {
-        return imageBaseUrl.endsWith("/") ? imageBaseUrl + imageName : imageBaseUrl + "/" + imageName;
     }
 
     @Override
@@ -125,12 +131,14 @@ public class ProductServiceImpl implements ProductService {
 
         Pageable pageable = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
 
-        Page<Product> productPage = productRepository.findByCategoryOrderByPriceAsc(category, pageable);
+        Page<Product> productPage = productRepository.findByCategoryAndActiveTrueOrderByPriceAsc(category, pageable);
+
         List<Product> products = productPage.getContent();
 
         if (products.isEmpty()) {
             throw new APIException("No products found");
         }
+
         List<ProductDTO> productDTOS = products.stream()
                 .map(product -> mapProduct(product, false))
                 .toList();
@@ -146,12 +154,17 @@ public class ProductServiceImpl implements ProductService {
                                                    String sortOrder) {
         Pageable pageable = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
 
-        Page<Product> productPage = productRepository.findByProductNameLikeIgnoreCase('%' + keyword + '%', pageable);
+        Page<Product> productPage = productRepository.findByProductNameLikeIgnoreCaseAndActiveTrue(
+                "%" + keyword + "%",
+                pageable
+        );
 
         List<Product> products = productPage.getContent();
+
         if (products.isEmpty()) {
             throw new APIException("No products found");
         }
+
         List<ProductDTO> productDTOS = products.stream()
                 .map(product -> mapProduct(product, false))
                 .toList();
@@ -176,9 +189,12 @@ public class ProductServiceImpl implements ProductService {
         Product savedProduct = productRepository.save(productFromDB);
 
         List<Cart> carts = cartRepository.findCartsByProductId(productId);
+
         List<CartDTO> cartDTOs = carts.stream().map(cart -> {
             CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
-            List<ProductDTO> products = cart.getCartItems().stream().map(p -> modelMapper.map(p.getProduct(), ProductDTO.class)).toList();
+            List<ProductDTO> products = cart.getCartItems().stream()
+                    .map(p -> modelMapper.map(p.getProduct(), ProductDTO.class))
+                    .toList();
             cartDTO.setProducts(products);
             return cartDTO;
         }).toList();
@@ -196,8 +212,11 @@ public class ProductServiceImpl implements ProductService {
         List<Cart> carts = cartRepository.findCartsByProductId(productId);
         carts.forEach(cart -> cartService.deleteProductFromCart(cart.getCartId(), productId));
 
-        productRepository.delete(product);
-        return modelMapper.map(product, ProductDTO.class);
+        product.setActive(false);
+
+        Product savedProduct = productRepository.save(product);
+
+        return modelMapper.map(savedProduct, ProductDTO.class);
     }
 
     @Override
@@ -208,16 +227,23 @@ public class ProductServiceImpl implements ProductService {
         String fileName = fileService.uploadImage(path, image);
 
         productFromDB.setImage(fileName);
+
         Product savedProduct = productRepository.save(productFromDB);
+
         return modelMapper.map(savedProduct, ProductDTO.class);
     }
 
     @Override
-    public ProductResponse getAllProductsForAdmin(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+    public ProductResponse getAllProductsForAdmin(Integer pageNumber,
+                                                  Integer pageSize,
+                                                  String sortBy,
+                                                  String sortOrder) {
         Pageable pageable = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
 
-        Page<Product> productPage = productRepository.findAll(pageable);
+        Page<Product> productPage = productRepository.findByActiveTrue(pageable);
+
         List<Product> products = productPage.getContent();
+
         if (products.isEmpty()) {
             throw new APIException("No products found");
         }
@@ -230,14 +256,18 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public ProductResponse getAllProductsForSeller(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+    public ProductResponse getAllProductsForSeller(Integer pageNumber,
+                                                   Integer pageSize,
+                                                   String sortBy,
+                                                   String sortOrder) {
         Pageable pageable = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
 
         User user = authUtil.loggedInUser();
 
-        Page<Product> productPage = productRepository.findByUser(user, pageable);
+        Page<Product> productPage = productRepository.findByUserAndActiveTrue(user, pageable);
 
         List<Product> products = productPage.getContent();
+
         if (products.isEmpty()) {
             throw new APIException("No products found");
         }
@@ -247,35 +277,50 @@ public class ProductServiceImpl implements ProductService {
                 .toList();
 
         return buildProductResponse(productPage, productDTOS);
+    }
+
+    private String constructImageUrl(String imageName) {
+        return imageBaseUrl.endsWith("/")
+                ? imageBaseUrl + imageName
+                : imageBaseUrl + "/" + imageName;
     }
 
     private Double countSpecialPrice(Double price, Double discount) {
         return price - ((discount * 0.01) * price);
     }
 
-    private Pageable buildPageable(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+    private Pageable buildPageable(Integer pageNumber,
+                                   Integer pageSize,
+                                   String sortBy,
+                                   String sortOrder) {
         Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
+
         return PageRequest.of(pageNumber, pageSize, sortByAndOrder);
     }
 
     private ProductDTO mapProduct(Product product, boolean includeImageUrl) {
         ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
+
         if (includeImageUrl) {
             productDTO.setImage(constructImageUrl(product.getImage()));
         }
+
         return productDTO;
     }
 
-    private ProductResponse buildProductResponse(Page<Product> productPage, List<ProductDTO> productDTOS) {
+    private ProductResponse buildProductResponse(Page<Product> productPage,
+                                                 List<ProductDTO> productDTOS) {
         ProductResponse productResponse = new ProductResponse();
+
         productResponse.setContent(productDTOS);
         productResponse.setPageNumber(productPage.getNumber());
         productResponse.setPageSize(productPage.getSize());
         productResponse.setTotalPages(productPage.getTotalPages());
         productResponse.setTotalElements(productPage.getTotalElements());
         productResponse.setLastPage(productPage.isLast());
+
         return productResponse;
     }
 }

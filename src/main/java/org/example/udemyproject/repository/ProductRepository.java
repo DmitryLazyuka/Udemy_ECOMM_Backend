@@ -12,13 +12,15 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
 
-    Page<Product> findByCategoryOrderByPriceAsc(Category category, Pageable pageable);
+    Page<Product> findByCategoryAndActiveTrueOrderByPriceAsc(Category category, Pageable pageable);
 
-    Page<Product> findByProductNameLikeIgnoreCase(String keyword, Pageable pageable);
+    Page<Product> findByProductNameLikeIgnoreCaseAndActiveTrue(String keyword, Pageable pageable);
 
     boolean existsProductByProductNameAndDescription(String productName, String description);
 
     boolean existsByCategoryCategoryId(Long categoryId);
 
-    Page<Product> findByUser(User user, Pageable pageable);
+    Page<Product> findByUserAndActiveTrue(User user, Pageable pageable);
+
+    Page<Product> findByActiveTrue(Pageable pageable);
 }

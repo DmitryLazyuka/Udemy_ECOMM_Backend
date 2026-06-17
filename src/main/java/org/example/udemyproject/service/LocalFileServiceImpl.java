@@ -1,5 +1,6 @@
 package org.example.udemyproject.service;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -10,7 +11,8 @@ import java.nio.file.Paths;
 import java.util.UUID;
 
 @Service
-public class FileServiceImpl implements FileService {
+@ConditionalOnProperty(name = "app.storage.type", havingValue = "local")
+public class LocalFileServiceImpl implements FileService {
 
     @Override
     public String uploadImage(String path, MultipartFile image) throws IOException {
@@ -23,9 +25,11 @@ public class FileServiceImpl implements FileService {
 
         File folder = new File(path);
         if (!folder.exists()) {
-            folder.mkdir();
+            folder.mkdirs();
         }
+
         Files.copy(image.getInputStream(), Paths.get(filePath));
+
         return fileName;
     }
 }

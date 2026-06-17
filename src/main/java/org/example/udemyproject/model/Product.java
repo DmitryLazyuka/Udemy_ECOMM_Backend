@@ -35,6 +35,7 @@ public class Product {
     private Double price;
     private Double discount;
     private Double specialPrice;
+    private boolean active = true;
 
     @ManyToOne
     @JoinColumn(name = "category_id")
