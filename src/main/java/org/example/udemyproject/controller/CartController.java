@@ -15,7 +15,6 @@ import org.example.udemyproject.payload.CartItemDTO;
 import org.example.udemyproject.repository.CartRepository;
 import org.example.udemyproject.service.CartService;
 import org.example.udemyproject.util.AuthUtil;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,16 +27,24 @@ import java.util.List;
 @SecurityRequirement(name = "bearer")
 public class CartController {
 
-    @Autowired
-    private CartService cartService;
+    private final CartService cartService;
+    private final AuthUtil authUtil;
+    private final CartRepository cartRepository;
 
-    @Autowired
-    private AuthUtil authUtil;
-
-    @Autowired
-    private CartRepository cartRepository;
+    public CartController(CartService cartService, AuthUtil authUtil, CartRepository cartRepository) {
+        this.cartService = cartService;
+        this.authUtil = authUtil;
+        this.cartRepository = cartRepository;
+    }
 
     @PostMapping("/cart/create")
+    @Operation(summary = "Create or replace cart", description = "Creates or updates the authenticated user's cart using the provided cart items.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Cart created or updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid cart payload",
+                    content = @Content(schema = @Schema(implementation = APIResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     public ResponseEntity<String> createOrUpdateCart(@RequestBody List<CartItemDTO> cartItems) {
         String response = cartService.createOrUpdateCartWithItems(cartItems);
         return new ResponseEntity<>(response, HttpStatus.CREATED);

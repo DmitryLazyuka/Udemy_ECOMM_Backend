@@ -15,7 +15,6 @@ import org.example.udemyproject.security.response.MessageResponse;
 import org.example.udemyproject.security.response.UserInfoResponse;
 import org.example.udemyproject.security.services.UserDetailsImpl;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseCookie;
@@ -37,22 +36,28 @@ import java.util.Set;
 @Transactional
 public class AuthServiceImpl implements AuthService {
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+    private static final String ROLE_NOT_FOUND_MESSAGE = "Role is not found";
 
-    @Autowired
-    private JwtUtils jwtUtils;
+    private final AuthenticationManager authenticationManager;
+    private final JwtUtils jwtUtils;
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final ModelMapper modelMapper;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private RoleRepository roleRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    @Autowired
-    private ModelMapper modelMapper;
+    public AuthServiceImpl(AuthenticationManager authenticationManager,
+                           JwtUtils jwtUtils,
+                           UserRepository userRepository,
+                           RoleRepository roleRepository,
+                           PasswordEncoder passwordEncoder,
+                           ModelMapper modelMapper) {
+        this.authenticationManager = authenticationManager;
+        this.jwtUtils = jwtUtils;
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.modelMapper = modelMapper;
+    }
 
     @Override
     public AuthenticationResult login(LoginRequest loginRequest) {
@@ -91,26 +96,13 @@ public class AuthServiceImpl implements AuthService {
         Set<Role> roles = new HashSet<>();
 
         if (strRoles == null) {
-            Role userRole = roleRepository.findByRoleName(AppRole.ROLE_USER)
-                    .orElseThrow(() -> new RuntimeException("Role is not found"));
-            roles.add(userRole);
+            roles.add(getRole(AppRole.ROLE_USER));
         } else {
             strRoles.forEach(role -> {
                 switch (role) {
-                    case "admin":
-                        Role adminRole = roleRepository.findByRoleName(AppRole.ROLE_ADMIN)
-                                .orElseThrow(() -> new RuntimeException("Role is not found"));
-                        roles.add(adminRole);
-                        break;
-                    case "seller":
-                        Role sellerRole = roleRepository.findByRoleName(AppRole.ROLE_SELLER)
-                                .orElseThrow(() -> new RuntimeException("Role is not found"));
-                        roles.add(sellerRole);
-                        break;
-                    default:
-                        Role userRole = roleRepository.findByRoleName(AppRole.ROLE_USER)
-                                .orElseThrow(() -> new RuntimeException("Role is not found"));
-                        roles.add(userRole);
+                    case "admin" -> roles.add(getRole(AppRole.ROLE_ADMIN));
+                    case "seller" -> roles.add(getRole(AppRole.ROLE_SELLER));
+                    default -> roles.add(getRole(AppRole.ROLE_USER));
                 }
             });
         }
@@ -154,5 +146,10 @@ public class AuthServiceImpl implements AuthService {
         response.setLastPage(allUsers.isLast());
 
         return response;
+    }
+
+    private Role getRole(AppRole roleName) {
+        return roleRepository.findByRoleName(roleName)
+                .orElseThrow(() -> new RuntimeException(ROLE_NOT_FOUND_MESSAGE));
     }
 }

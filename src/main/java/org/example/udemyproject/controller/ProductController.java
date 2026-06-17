@@ -14,7 +14,6 @@ import org.example.udemyproject.payload.APIResponse;
 import org.example.udemyproject.payload.ProductDTO;
 import org.example.udemyproject.payload.ProductResponse;
 import org.example.udemyproject.service.ProductService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,8 +25,11 @@ import java.io.IOException;
 @RequestMapping("/api")
 @Tag(name = "Products", description = "Product catalog and product management endpoints")
 public class ProductController {
-    @Autowired
-    private ProductService productService;
+    private final ProductService productService;
+
+    public ProductController(ProductService productService) {
+        this.productService = productService;
+    }
 
     @PostMapping("/admin/categories/{categoryId}/product")
     @Operation(summary = "Create product", description = "Creates a new product in the specified category.")
@@ -153,6 +155,13 @@ public class ProductController {
     }
 
     @GetMapping("/admin/products")
+    @Operation(summary = "List products for admin", description = "Returns a paginated list of all products for admins.")
+    @SecurityRequirement(name = "bearer")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Products returned successfully",
+                    content = @Content(schema = @Schema(implementation = ProductResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     public ResponseEntity<ProductResponse> getAllProductsForAdmin(
             @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER, required = false) Integer pageNumber,
             @RequestParam(name = "pageSize", defaultValue = AppConstants.PAGE_SIZE, required = false) Integer pageSize,
@@ -160,5 +169,72 @@ public class ProductController {
             @RequestParam(name = "sortOrder", defaultValue = AppConstants.SORT_DIR, required = false) String sortOrder) {
         ProductResponse response = productService.getAllProductsForAdmin(pageNumber, pageSize, sortBy, sortOrder);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/seller/products")
+    @Operation(summary = "List products for seller", description = "Returns a paginated list of products that belong to the authenticated seller.")
+    @SecurityRequirement(name = "bearer")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Products returned successfully",
+                    content = @Content(schema = @Schema(implementation = ProductResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
+    public ResponseEntity<ProductResponse> getAllProductsForSeller(
+            @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER, required = false) Integer pageNumber,
+            @RequestParam(name = "pageSize", defaultValue = AppConstants.PAGE_SIZE, required = false) Integer pageSize,
+            @RequestParam(name = "sortBy", defaultValue = AppConstants.SORT_PRODUCTS_BY, required = false) String sortBy,
+            @RequestParam(name = "sortOrder", defaultValue = AppConstants.SORT_DIR, required = false) String sortOrder) {
+        ProductResponse response = productService.getAllProductsForSeller(pageNumber, pageSize, sortBy, sortOrder);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @PostMapping("/seller/categories/{categoryId}/product")
+    @Operation(summary = "Create product as seller", description = "Creates a new product in the specified category for the authenticated seller.")
+    @SecurityRequirement(name = "bearer")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Product created successfully",
+                    content = @Content(schema = @Schema(implementation = ProductDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid product payload",
+                    content = @Content(schema = @Schema(implementation = APIResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "404", description = "Category not found",
+                    content = @Content(schema = @Schema(implementation = APIResponse.class)))
+    })
+    public ResponseEntity<ProductDTO> addProductForSeller(@Valid @RequestBody ProductDTO productDTO,
+                                                 @PathVariable Long categoryId) {
+        ProductDTO savedProductDTO = productService.addProduct(productDTO, categoryId);
+        return new ResponseEntity<>(savedProductDTO, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/seller/products/{productId}")
+    @Operation(summary = "Update product as seller", description = "Updates an existing product that belongs to the authenticated seller.")
+    @SecurityRequirement(name = "bearer")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Product updated successfully",
+                    content = @Content(schema = @Schema(implementation = ProductDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid product payload",
+                    content = @Content(schema = @Schema(implementation = APIResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "404", description = "Product not found",
+                    content = @Content(schema = @Schema(implementation = APIResponse.class)))
+    })
+    public ResponseEntity<ProductDTO> updateProductForSeller(@Valid @RequestBody ProductDTO productDTO,
+                                                    @PathVariable Long productId) {
+        ProductDTO updatedProductDTO = productService.updateProduct(productId, productDTO);
+        return new ResponseEntity<>(updatedProductDTO, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/seller/products/{productId}")
+    @Operation(summary = "Delete product as seller", description = "Deletes an existing product that belongs to the authenticated seller.")
+    @SecurityRequirement(name = "bearer")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Product deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "404", description = "Product not found",
+                    content = @Content(schema = @Schema(implementation = APIResponse.class)))
+    })
+    public ResponseEntity<ProductDTO> deleteProductForSeller(@PathVariable Long productId) {
+        ProductDTO deletedProduct = productService.deleteProduct(productId);
+        return new ResponseEntity<>(deletedProduct, HttpStatus.NO_CONTENT);
     }
 }

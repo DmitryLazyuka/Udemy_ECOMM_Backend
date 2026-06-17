@@ -28,9 +28,6 @@ public class StripeServiceImpl implements StripeService {
     public PaymentIntent paymentIntent(StripePaymentDTO stripePaymentDTO) throws StripeException {
         StripeClient client = new StripeClient(stripeApiKey);
 
-        System.out.println("STRIPE DTO AMOUNT = " + stripePaymentDTO.getAmount());
-        System.out.println("STRIPE DTO CURRENCY = " + stripePaymentDTO.getCurrency());
-
         PaymentIntentCreateParams params =
                 PaymentIntentCreateParams.builder()
                         .setAmount(stripePaymentDTO.getAmount())

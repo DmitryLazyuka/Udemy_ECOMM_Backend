@@ -11,17 +11,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.example.udemyproject.config.AppConstants;
 import org.example.udemyproject.payload.AuthenticationResult;
+import org.example.udemyproject.payload.UserResponse;
 import org.example.udemyproject.security.request.LoginRequest;
 import org.example.udemyproject.security.request.SignupRequest;
 import org.example.udemyproject.security.response.MessageResponse;
 import org.example.udemyproject.security.response.UserInfoResponse;
 import org.example.udemyproject.service.AuthService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -32,8 +31,11 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Authentication", description = "Authentication and current-user endpoints")
 public class AuthController {
 
-    @Autowired
-    private AuthService authService;
+    private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
 
     @PostMapping("/signin")
     @Operation(summary = "Sign in", description = "Authenticates a user and returns the current user information with a JWT cookie.")
@@ -43,7 +45,7 @@ public class AuthController {
                     content = @Content(schema = @Schema(implementation = UserInfoResponse.class))),
             @ApiResponse(responseCode = "401", description = "Invalid credentials")
     })
-    public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<UserInfoResponse> authenticateUser(@RequestBody LoginRequest loginRequest) {
         AuthenticationResult result = authService.login(loginRequest);
 
         return ResponseEntity.ok()
@@ -60,7 +62,7 @@ public class AuthController {
             @ApiResponse(responseCode = "400", description = "Invalid or duplicate registration data",
                     content = @Content(schema = @Schema(implementation = MessageResponse.class)))
     })
-    public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signupRequest) {
+    public ResponseEntity<MessageResponse> registerUser(@Valid @RequestBody SignupRequest signupRequest) {
         return authService.register(signupRequest);
 
     }
@@ -99,7 +101,7 @@ public class AuthController {
                     content = @Content(schema = @Schema(implementation = MessageResponse.class))),
             @ApiResponse(responseCode = "401", description = "Authentication required")
     })
-    public ResponseEntity<?> signoutUser() {
+    public ResponseEntity<MessageResponse> signoutUser() {
         ResponseCookie jwtCookie = authService.logoutUser();
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
@@ -107,7 +109,14 @@ public class AuthController {
     }
 
     @GetMapping("/sellers")
-    public ResponseEntity<?> getAllSellers(
+    @Operation(summary = "List sellers", description = "Returns a paginated list of seller accounts.")
+    @SecurityRequirement(name = "bearer")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Sellers returned successfully",
+                    content = @Content(schema = @Schema(implementation = UserResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
+    public ResponseEntity<UserResponse> getAllSellers(
             @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER, required = false) Integer pageNumber
 
     ) {

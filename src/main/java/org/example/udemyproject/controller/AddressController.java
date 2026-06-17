@@ -14,7 +14,6 @@ import org.example.udemyproject.payload.APIResponse;
 import org.example.udemyproject.payload.AddressDTO;
 import org.example.udemyproject.service.AddressService;
 import org.example.udemyproject.util.AuthUtil;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,11 +26,13 @@ import java.util.List;
 @SecurityRequirement(name = "bearer")
 public class AddressController {
 
-    @Autowired
-    private AuthUtil authUtil;
+    private final AuthUtil authUtil;
+    private final AddressService addressService;
 
-    @Autowired
-    private AddressService addressService;
+    public AddressController(AuthUtil authUtil, AddressService addressService) {
+        this.authUtil = authUtil;
+        this.addressService = addressService;
+    }
 
     @PostMapping("/addresses")
     @Operation(summary = "Create address", description = "Creates a new address for the authenticated user.")

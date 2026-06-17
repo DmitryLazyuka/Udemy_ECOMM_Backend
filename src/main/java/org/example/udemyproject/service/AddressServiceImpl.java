@@ -7,7 +7,6 @@ import org.example.udemyproject.payload.AddressDTO;
 import org.example.udemyproject.repository.AddressRepository;
 import org.example.udemyproject.repository.UserRepository;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,14 +14,15 @@ import java.util.List;
 @Service
 public class AddressServiceImpl implements AddressService {
 
-    @Autowired
-    private AddressRepository addressRepository;
+    private final AddressRepository addressRepository;
+    private final ModelMapper modelMapper;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    private UserRepository userRepository;
+    public AddressServiceImpl(AddressRepository addressRepository, ModelMapper modelMapper, UserRepository userRepository) {
+        this.addressRepository = addressRepository;
+        this.modelMapper = modelMapper;
+        this.userRepository = userRepository;
+    }
 
     @Override
     public AddressDTO createAddress(AddressDTO addressDTO, User user) {
@@ -41,21 +41,22 @@ public class AddressServiceImpl implements AddressService {
     public List<AddressDTO> getAddresses() {
         List<Address> addressList = addressRepository.findAll();
         return addressList.stream()
-                .map(a -> modelMapper.map(a, AddressDTO.class)).toList();
+                .map(this::mapAddress)
+                .toList();
     }
 
     @Override
     public AddressDTO getAddressById(Long addressId) {
         Address address = addressRepository.findById(addressId)
                 .orElseThrow(() -> new ResourceNotFoundException("Address", "addressId",  addressId));
-        return modelMapper.map(address, AddressDTO.class);
+        return mapAddress(address);
     }
 
     @Override
     public List<AddressDTO> getUserAddresses(User user) {
         List<Address> addressList = user.getAddresses();
         return addressList.stream()
-                .map(a -> modelMapper.map(a, AddressDTO.class))
+                .map(this::mapAddress)
                 .toList();
     }
 
@@ -78,7 +79,7 @@ public class AddressServiceImpl implements AddressService {
         user.getAddresses().add(updatedAddress);
         userRepository.save(user);
 
-        return modelMapper.map(updatedAddress, AddressDTO.class);
+        return mapAddress(updatedAddress);
     }
 
     @Override
@@ -91,5 +92,9 @@ public class AddressServiceImpl implements AddressService {
         addressRepository.delete(address);
 
         return "Address has been deleted";
+    }
+
+    private AddressDTO mapAddress(Address address) {
+        return modelMapper.map(address, AddressDTO.class);
     }
 }

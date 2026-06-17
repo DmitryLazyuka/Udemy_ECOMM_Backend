@@ -12,8 +12,11 @@ import java.util.List;
 import java.util.Set;
 
 @Entity
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 @Table(name = "users",
         uniqueConstraints = {
                 @UniqueConstraint(columnNames = "username"),
@@ -21,6 +24,8 @@ import java.util.Set;
         })
 public class User {
     @Id
+    @EqualsAndHashCode.Include
+    @ToString.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long userId;
 
@@ -38,8 +43,7 @@ public class User {
     @Email
     @Column(name = "email")
     private String email;
-    @Getter
-    @Setter
+
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE},
             fetch = FetchType.EAGER)
     @JoinTable(name = "user_role",

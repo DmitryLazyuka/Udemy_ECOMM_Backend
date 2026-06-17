@@ -8,7 +8,6 @@ import org.example.udemyproject.payload.CategoryResponse;
 import org.example.udemyproject.repository.CategoryRepository;
 import org.example.udemyproject.repository.ProductRepository;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -20,21 +19,21 @@ import java.util.List;
 @Service
 public class CategoryServiceImpl implements CategoryService {
 
-    @Autowired
-    private CategoryRepository categoryRepository;
+    private final CategoryRepository categoryRepository;
+    private final ModelMapper modelMapper;
+    private final ProductRepository productRepository;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    private ProductRepository productRepository;
+    public CategoryServiceImpl(CategoryRepository categoryRepository,
+                               ModelMapper modelMapper,
+                               ProductRepository productRepository) {
+        this.categoryRepository = categoryRepository;
+        this.modelMapper = modelMapper;
+        this.productRepository = productRepository;
+    }
 
     @Override
     public CategoryResponse getAllCategories(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
-        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+        Pageable pageable = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
         Page<Category> categoryPage = categoryRepository.findAll(pageable);
         List<Category> categories = categoryPage.getContent();
         if (categories.isEmpty()) {
@@ -43,14 +42,7 @@ public class CategoryServiceImpl implements CategoryService {
         List<CategoryDTO> categoryDTOs = categories.stream()
                 .map(category -> modelMapper.map(category, CategoryDTO.class))
                 .toList();
-        CategoryResponse categoryResponse = new CategoryResponse();
-        categoryResponse.setContent(categoryDTOs);
-        categoryResponse.setPageNumber(categoryPage.getNumber());
-        categoryResponse.setPageSize(categoryPage.getSize());
-        categoryResponse.setTotalPages(categoryPage.getTotalPages());
-        categoryResponse.setTotalElements(categoryPage.getTotalElements());
-        categoryResponse.setLastPage(categoryPage.isLast());
-        return categoryResponse;
+        return buildCategoryResponse(categoryPage, categoryDTOs);
     }
 
     @Override
@@ -87,5 +79,23 @@ public class CategoryServiceImpl implements CategoryService {
 
         Category saved = categoryRepository.save(foundCategory);
         return modelMapper.map(saved, CategoryDTO.class);
+    }
+
+    private Pageable buildPageable(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        return PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+    }
+
+    private CategoryResponse buildCategoryResponse(Page<Category> categoryPage, List<CategoryDTO> categoryDTOs) {
+        CategoryResponse categoryResponse = new CategoryResponse();
+        categoryResponse.setContent(categoryDTOs);
+        categoryResponse.setPageNumber(categoryPage.getNumber());
+        categoryResponse.setPageSize(categoryPage.getSize());
+        categoryResponse.setTotalPages(categoryPage.getTotalPages());
+        categoryResponse.setTotalElements(categoryPage.getTotalElements());
+        categoryResponse.setLastPage(categoryPage.isLast());
+        return categoryResponse;
     }
 }

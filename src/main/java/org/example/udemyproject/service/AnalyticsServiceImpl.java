@@ -3,17 +3,18 @@ package org.example.udemyproject.service;
 import org.example.udemyproject.payload.AnalyticsResponse;
 import org.example.udemyproject.repository.OrderRepository;
 import org.example.udemyproject.repository.ProductRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AnalyticsServiceImpl implements AnalyticsService {
 
-    @Autowired
-    private ProductRepository productRepository;
+    private final ProductRepository productRepository;
+    private final OrderRepository orderRepository;
 
-    @Autowired
-    private OrderRepository orderRepository;
+    public AnalyticsServiceImpl(ProductRepository productRepository, OrderRepository orderRepository) {
+        this.productRepository = productRepository;
+        this.orderRepository = orderRepository;
+    }
 
     @Override
     public AnalyticsResponse getAnalyticsData() {

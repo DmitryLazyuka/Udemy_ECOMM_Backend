@@ -25,6 +25,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Configuration
@@ -76,7 +77,8 @@ public class WebSecurityConfig {
                                 .requestMatchers("/h2-console/**").permitAll()
                                 .requestMatchers("/swagger-ui/**").permitAll()
                                 .requestMatchers("/api/public/**").permitAll()
-                                .requestMatchers("/api/admin/**").permitAll()
+                                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                                .requestMatchers("/api/seller/**").hasAnyRole("SELLER", "ADMIN")
                                 .requestMatchers("/api/test/**").permitAll()
                                 .requestMatchers("/images/**").permitAll()
                                 .requestMatchers("/api/order/**").permitAll()
@@ -124,9 +126,16 @@ public class WebSecurityConfig {
                         return roleRepository.save(newAdminRole);
                     });
 
-            Set<Role> userRoles = Set.of(userRole);
-            Set<Role> sellerRoles = Set.of(sellerRole);
-            Set<Role> adminRoles = Set.of(userRole, sellerRole, adminRole);
+            Set<Role> userRoles = new HashSet<>();
+            userRoles.add(userRole);
+
+            Set<Role> sellerRoles = new HashSet<>();
+            sellerRoles.add(sellerRole);
+
+            Set<Role> adminRoles = new HashSet<>();
+            adminRoles.add(userRole);
+            adminRoles.add(sellerRole);
+            adminRoles.add(adminRole);
 
             if (!userRepository.existsByUsername("user")) {
                 User user = new User("user", passwordEncoder.encode("user"), "user@example.com");

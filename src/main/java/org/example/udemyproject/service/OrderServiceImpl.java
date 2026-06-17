@@ -7,8 +7,8 @@ import org.example.udemyproject.payload.OrderDTO;
 import org.example.udemyproject.payload.OrderItemDTO;
 import org.example.udemyproject.payload.OrderResponse;
 import org.example.udemyproject.repository.*;
+import org.example.udemyproject.util.AuthUtil;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,26 +22,32 @@ import java.util.List;
 
 @Service
 public class OrderServiceImpl implements OrderService {
-    @Autowired
-    private CartRepository cartRepository;
+    private final CartRepository cartRepository;
+    private final AddressRepository addressRepository;
+    private final PaymentRepository paymentRepository;
+    private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
+    private final ProductRepository productRepository;
+    private final ModelMapper modelMapper;
+    private final AuthUtil authUtil;
 
-    @Autowired
-    private AddressRepository addressRepository;
-
-    @Autowired
-    private PaymentRepository paymentRepository;
-
-    @Autowired
-    private OrderRepository orderRepository;
-
-    @Autowired
-    private OrderItemRepository orderItemRepository;
-
-    @Autowired
-    private ProductRepository productRepository;
-
-    @Autowired
-    private ModelMapper modelMapper;
+    public OrderServiceImpl(CartRepository cartRepository,
+                            AddressRepository addressRepository,
+                            PaymentRepository paymentRepository,
+                            OrderRepository orderRepository,
+                            OrderItemRepository orderItemRepository,
+                            ProductRepository productRepository,
+                            ModelMapper modelMapper,
+                            AuthUtil authUtil) {
+        this.cartRepository = cartRepository;
+        this.addressRepository = addressRepository;
+        this.paymentRepository = paymentRepository;
+        this.orderRepository = orderRepository;
+        this.orderItemRepository = orderItemRepository;
+        this.productRepository = productRepository;
+        this.modelMapper = modelMapper;
+        this.authUtil = authUtil;
+    }
 
     @Override
     @Transactional
@@ -155,25 +161,11 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponse getAllOrders(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
-
-        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-
-        Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+        Pageable pageDetails = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
         Page<Order> pageOrders = orderRepository.findAll(pageDetails);
         List<Order> orders = pageOrders.getContent();
         List<OrderDTO> orderDTOs = orders.stream().map(order -> modelMapper.map(order, OrderDTO.class)).toList();
-
-        OrderResponse response = new OrderResponse();
-        response.setContent(orderDTOs);
-        response.setPageNumber(pageOrders.getNumber());
-        response.setPageSize(pageOrders.getSize());
-        response.setTotalPages(pageOrders.getTotalPages());
-        response.setTotalElements(pageOrders.getTotalElements());
-        response.setLastPage(pageOrders.isLast());
-
-        return response;
+        return buildOrderResponse(pageOrders, orderDTOs);
     }
 
     @Override
@@ -182,5 +174,48 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderStatus(status);
         return modelMapper.map(orderRepository.save(order), OrderDTO.class);
     }
-}
 
+    @Override
+    public OrderResponse getAllSellerOrders(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+        Pageable pageDetails = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
+
+        User seller = authUtil.loggedInUser();
+
+        Page<Order> pageOrders = orderRepository.findAll(pageDetails);
+        List<Order> orders = pageOrders.getContent().stream()
+                .filter(order -> order.getOrderItems().stream()
+                        .anyMatch(orderItem ->
+                        {
+                            var product = orderItem.getProduct();
+                            if (product == null || product.getUser() == null) {
+                                return false;
+                            }
+                            return product.getUser().getUserId().equals(seller.getUserId());
+                        }))
+                .toList();
+
+        List<OrderDTO> orderDTOs = orders.stream()
+                .map(order -> modelMapper.map(order, OrderDTO.class))
+                .toList();
+
+        return buildOrderResponse(pageOrders, orderDTOs);
+    }
+
+    private Pageable buildPageable(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        return PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+    }
+
+    private OrderResponse buildOrderResponse(Page<Order> pageOrders, List<OrderDTO> orderDTOs) {
+        OrderResponse response = new OrderResponse();
+        response.setContent(orderDTOs);
+        response.setPageNumber(pageOrders.getNumber());
+        response.setPageSize(pageOrders.getSize());
+        response.setTotalPages(pageOrders.getTotalPages());
+        response.setTotalElements(pageOrders.getTotalElements());
+        response.setLastPage(pageOrders.isLast());
+        return response;
+    }
+}

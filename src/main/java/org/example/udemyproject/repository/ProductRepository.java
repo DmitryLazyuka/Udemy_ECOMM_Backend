@@ -2,6 +2,7 @@ package org.example.udemyproject.repository;
 
 import org.example.udemyproject.model.Category;
 import org.example.udemyproject.model.Product;
+import org.example.udemyproject.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,4 +19,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     boolean existsProductByProductNameAndDescription(String productName, String description);
 
     boolean existsByCategoryCategoryId(Long categoryId);
+
+    Page<Product> findByUser(User user, Pageable pageable);
 }

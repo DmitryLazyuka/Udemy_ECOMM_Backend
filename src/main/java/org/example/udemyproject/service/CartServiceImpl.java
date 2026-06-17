@@ -13,31 +13,31 @@ import org.example.udemyproject.repository.CartRepository;
 import org.example.udemyproject.repository.ProductRepository;
 import org.example.udemyproject.util.AuthUtil;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 public class CartServiceImpl implements CartService {
 
-    @Autowired
-    private CartItemRepository cartItemRepository;
+    private final CartItemRepository cartItemRepository;
+    private final CartRepository cartRepository;
+    private final AuthUtil authUtil;
+    private final ModelMapper modelMapper;
+    private final ProductRepository productRepository;
 
-    @Autowired
-    private CartRepository cartRepository;
-
-    @Autowired
-    private AuthUtil authUtil;
-
-    @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    private ProductRepository productRepository;
+    public CartServiceImpl(CartItemRepository cartItemRepository,
+                           CartRepository cartRepository,
+                           AuthUtil authUtil,
+                           ModelMapper modelMapper,
+                           ProductRepository productRepository) {
+        this.cartItemRepository = cartItemRepository;
+        this.cartRepository = cartRepository;
+        this.authUtil = authUtil;
+        this.modelMapper = modelMapper;
+        this.productRepository = productRepository;
+    }
 
     @Override
     public CartDTO addProductToCart(Long productId, Integer quantity) {
@@ -77,20 +77,7 @@ public class CartServiceImpl implements CartService {
         cart.setTotalPrice(cart.getTotalPrice() + (product.getSpecialPrice() * quantity));
 
         Cart savedCart = cartRepository.save(cart);
-
-        CartDTO cartDTO = modelMapper.map(savedCart, CartDTO.class);
-
-        List<ProductDTO> products = savedCart.getCartItems().stream()
-                .map(item -> {
-                    ProductDTO productDTO = modelMapper.map(item.getProduct(), ProductDTO.class);
-                    productDTO.setQuantity(item.getQuantity());
-                    return productDTO;
-                })
-                .toList();
-
-        cartDTO.setProducts(products);
-
-        return cartDTO;
+        return mapCart(savedCart);
     }
 
     @Override
@@ -101,23 +88,9 @@ public class CartServiceImpl implements CartService {
             throw new APIException("No cart exists");
         }
 
-        List<CartDTO> cartDTOs = carts.stream().map(cart -> {
-            CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
-
-            List<ProductDTO> products = cart.getCartItems().stream().map(cartItem -> {
-                ProductDTO productDTO = modelMapper.map(cartItem.getProduct(), ProductDTO.class);
-                productDTO.setQuantity(cartItem.getQuantity()); // Set the quantity from CartItem
-                return productDTO;
-            }).collect(Collectors.toList());
-
-
-            cartDTO.setProducts(products);
-
-            return cartDTO;
-
-        }).collect(Collectors.toList());
-
-        return cartDTOs;
+        return carts.stream()
+                .map(this::mapCart)
+                .toList();
     }
 
     @Override
@@ -130,10 +103,9 @@ public class CartServiceImpl implements CartService {
         cart.getCartItems().forEach(c -> {
             c.getProduct().setQuantity(c.getQuantity());
         });
-        List<ProductDTO> products = cart.getCartItems().stream()
-                .map(p -> modelMapper.map(p.getProduct(), ProductDTO.class))
-                .toList();
-        cartDTO.setProducts(products);
+        cartDTO.setProducts(cart.getCartItems().stream()
+                .map(cartItem -> mapProduct(cartItem.getProduct(), cartItem.getQuantity()))
+                .toList());
         return cartDTO;
     }
 
@@ -183,17 +155,7 @@ public class CartServiceImpl implements CartService {
             cartItemRepository.deleteById(updatedCartItem.getCartItemId());
         }
 
-        CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
-        List<CartItem> cartItems = cart.getCartItems();
-
-        Stream<ProductDTO> productStream = cartItems.stream()
-                .map(item -> {
-                    ProductDTO map = modelMapper.map(item.getProduct(), ProductDTO.class);
-                    map.setQuantity(item.getQuantity());
-                    return map;
-                });
-        cartDTO.setProducts(productStream.toList());
-        return cartDTO;
+        return mapCart(cart);
     }
 
     @Override
@@ -280,5 +242,19 @@ public class CartServiceImpl implements CartService {
         cart.setTotalPrice(0.0);
         cart.setUser(authUtil.loggedInUser());
         return cartRepository.save(cart);
+    }
+
+    private CartDTO mapCart(Cart cart) {
+        CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
+        cartDTO.setProducts(cart.getCartItems().stream()
+                .map(cartItem -> mapProduct(cartItem.getProduct(), cartItem.getQuantity()))
+                .toList());
+        return cartDTO;
+    }
+
+    private ProductDTO mapProduct(Product product, Integer quantity) {
+        ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
+        productDTO.setQuantity(quantity);
+        return productDTO;
     }
 }

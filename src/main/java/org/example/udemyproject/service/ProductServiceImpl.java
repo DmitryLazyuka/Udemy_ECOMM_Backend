@@ -5,14 +5,15 @@ import org.example.udemyproject.exceptions.ResourceNotFoundException;
 import org.example.udemyproject.model.Cart;
 import org.example.udemyproject.model.Category;
 import org.example.udemyproject.model.Product;
+import org.example.udemyproject.model.User;
 import org.example.udemyproject.payload.CartDTO;
 import org.example.udemyproject.payload.ProductDTO;
 import org.example.udemyproject.payload.ProductResponse;
 import org.example.udemyproject.repository.CartRepository;
 import org.example.udemyproject.repository.CategoryRepository;
 import org.example.udemyproject.repository.ProductRepository;
+import org.example.udemyproject.util.AuthUtil;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,26 +31,32 @@ public class ProductServiceImpl implements ProductService {
     @Value("${image.base.url}")
     private String imageBaseUrl;
 
-    @Autowired
-    private ProductRepository productRepository;
-
-    @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    private FileService fileService;
-
-    @Autowired
-    private CartRepository cartRepository;
-
-    @Autowired
-    private CartService cartService;
+    private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
+    private final ModelMapper modelMapper;
+    private final FileService fileService;
+    private final CartRepository cartRepository;
+    private final CartService cartService;
+    private final AuthUtil authUtil;
 
     @Value("${project.image}")
     private String path;
+
+    public ProductServiceImpl(ProductRepository productRepository,
+                              CategoryRepository categoryRepository,
+                              ModelMapper modelMapper,
+                              FileService fileService,
+                              CartRepository cartRepository,
+                              CartService cartService,
+                              AuthUtil authUtil) {
+        this.productRepository = productRepository;
+        this.categoryRepository = categoryRepository;
+        this.modelMapper = modelMapper;
+        this.fileService = fileService;
+        this.cartRepository = cartRepository;
+        this.cartService = cartService;
+        this.authUtil = authUtil;
+    }
 
     @Override
     public ProductDTO addProduct(ProductDTO productDTO, Long categoryId) {
@@ -64,6 +71,7 @@ public class ProductServiceImpl implements ProductService {
 
         product.setImage("default.png");
         product.setCategory(category);
+        product.setUser(authUtil.loggedInUser());
         product.setSpecialPrice(countSpecialPrice(product.getPrice(), product.getDiscount()));
         Product savedProduct = productRepository.save(product);
         return modelMapper.map(savedProduct, ProductDTO.class);
@@ -76,10 +84,7 @@ public class ProductServiceImpl implements ProductService {
                                           String sortOrder,
                                           String keyword,
                                           String category) {
-        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+        Pageable pageable = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
 
         Specification<Product> spec = Specification.unrestricted();
 
@@ -99,24 +104,10 @@ public class ProductServiceImpl implements ProductService {
         }
 
         List<ProductDTO> productDTOS = products.stream()
-                .map(p -> {
-                            ProductDTO productDTO = modelMapper.map(p, ProductDTO.class);
-                            productDTO.setImage(constructImageUrl(p.getImage()));
-                            return productDTO;
-                        }
-                )
+                .map(product -> mapProduct(product, true))
                 .toList();
 
-        ProductResponse productResponse = new ProductResponse();
-
-        productResponse.setContent(productDTOS);
-        productResponse.setPageNumber(productPage.getNumber());
-        productResponse.setPageSize(productPage.getSize());
-        productResponse.setTotalPages(productPage.getTotalPages());
-        productResponse.setTotalElements(productPage.getTotalElements());
-        productResponse.setLastPage(productPage.isLast());
-
-        return productResponse;
+        return buildProductResponse(productPage, productDTOS);
     }
 
     private String constructImageUrl(String imageName) {
@@ -132,11 +123,7 @@ public class ProductServiceImpl implements ProductService {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "categoryId", categoryId));
 
-        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-
-        Pageable pageable = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+        Pageable pageable = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
 
         Page<Product> productPage = productRepository.findByCategoryOrderByPriceAsc(category, pageable);
         List<Product> products = productPage.getContent();
@@ -145,19 +132,10 @@ public class ProductServiceImpl implements ProductService {
             throw new APIException("No products found");
         }
         List<ProductDTO> productDTOS = products.stream()
-                .map(p -> modelMapper.map(p, ProductDTO.class))
+                .map(product -> mapProduct(product, false))
                 .toList();
 
-        ProductResponse productResponse = new ProductResponse();
-
-        productResponse.setContent(productDTOS);
-        productResponse.setPageNumber(productPage.getNumber());
-        productResponse.setPageSize(productPage.getSize());
-        productResponse.setTotalPages(productPage.getTotalPages());
-        productResponse.setTotalElements(productPage.getTotalElements());
-        productResponse.setLastPage(productPage.isLast());
-
-        return productResponse;
+        return buildProductResponse(productPage, productDTOS);
     }
 
     @Override
@@ -166,11 +144,7 @@ public class ProductServiceImpl implements ProductService {
                                                    Integer pageSize,
                                                    String sortBy,
                                                    String sortOrder) {
-        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-
-        Pageable pageable = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+        Pageable pageable = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
 
         Page<Product> productPage = productRepository.findByProductNameLikeIgnoreCase('%' + keyword + '%', pageable);
 
@@ -179,19 +153,10 @@ public class ProductServiceImpl implements ProductService {
             throw new APIException("No products found");
         }
         List<ProductDTO> productDTOS = products.stream()
-                .map(p -> modelMapper.map(p, ProductDTO.class))
+                .map(product -> mapProduct(product, false))
                 .toList();
 
-        ProductResponse productResponse = new ProductResponse();
-
-        productResponse.setContent(productDTOS);
-        productResponse.setPageNumber(productPage.getNumber());
-        productResponse.setPageSize(productPage.getSize());
-        productResponse.setTotalPages(productPage.getTotalPages());
-        productResponse.setTotalElements(productPage.getTotalElements());
-        productResponse.setLastPage(productPage.isLast());
-
-        return productResponse;
+        return buildProductResponse(productPage, productDTOS);
     }
 
     @Override
@@ -249,11 +214,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponse getAllProductsForAdmin(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
-        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
-
+        Pageable pageable = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
 
         Page<Product> productPage = productRepository.findAll(pageable);
         List<Product> products = productPage.getContent();
@@ -262,27 +223,59 @@ public class ProductServiceImpl implements ProductService {
         }
 
         List<ProductDTO> productDTOS = products.stream()
-                .map(p -> {
-                            ProductDTO productDTO = modelMapper.map(p, ProductDTO.class);
-                            productDTO.setImage(constructImageUrl(p.getImage()));
-                            return productDTO;
-                        }
-                )
+                .map(product -> mapProduct(product, true))
                 .toList();
 
-        ProductResponse productResponse = new ProductResponse();
+        return buildProductResponse(productPage, productDTOS);
+    }
 
+    @Override
+    public ProductResponse getAllProductsForSeller(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+        Pageable pageable = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
+
+        User user = authUtil.loggedInUser();
+
+        Page<Product> productPage = productRepository.findByUser(user, pageable);
+
+        List<Product> products = productPage.getContent();
+        if (products.isEmpty()) {
+            throw new APIException("No products found");
+        }
+
+        List<ProductDTO> productDTOS = products.stream()
+                .map(product -> mapProduct(product, true))
+                .toList();
+
+        return buildProductResponse(productPage, productDTOS);
+    }
+
+    private Double countSpecialPrice(Double price, Double discount) {
+        return price - ((discount * 0.01) * price);
+    }
+
+    private Pageable buildPageable(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        return PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+    }
+
+    private ProductDTO mapProduct(Product product, boolean includeImageUrl) {
+        ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
+        if (includeImageUrl) {
+            productDTO.setImage(constructImageUrl(product.getImage()));
+        }
+        return productDTO;
+    }
+
+    private ProductResponse buildProductResponse(Page<Product> productPage, List<ProductDTO> productDTOS) {
+        ProductResponse productResponse = new ProductResponse();
         productResponse.setContent(productDTOS);
         productResponse.setPageNumber(productPage.getNumber());
         productResponse.setPageSize(productPage.getSize());
         productResponse.setTotalPages(productPage.getTotalPages());
         productResponse.setTotalElements(productPage.getTotalElements());
         productResponse.setLastPage(productPage.isLast());
-
         return productResponse;
-    }
-
-    private Double countSpecialPrice(Double price, Double discount) {
-        return price - ((discount * 0.01) * price);
     }
 }
