@@ -201,6 +201,26 @@ public class OrderServiceImpl implements OrderService {
         return buildOrderResponse(pageOrders, orderDTOs);
     }
 
+    @Override
+    public OrderResponse getAllUserOrders(Integer pageNumber,
+                                          Integer pageSize,
+                                          String sortBy,
+                                          String sortOrder) {
+
+        Pageable pageDetails = buildPageable(pageNumber, pageSize, sortBy, sortOrder);
+
+        String email = authUtil.loggedInEmail();
+
+        Page<Order> pageOrders = orderRepository.findByEmail(email, pageDetails);
+
+        List<OrderDTO> orderDTOs = pageOrders.getContent()
+                .stream()
+                .map(order -> modelMapper.map(order, OrderDTO.class))
+                .toList();
+
+        return buildOrderResponse(pageOrders, orderDTOs);
+    }
+
     private Pageable buildPageable(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
         Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()

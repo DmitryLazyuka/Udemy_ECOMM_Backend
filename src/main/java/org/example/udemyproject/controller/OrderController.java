@@ -141,4 +141,21 @@ public class OrderController {
         OrderDTO order = orderService.updateOrder(orderId, orderStatusUpdateDto.getStatus());
         return new ResponseEntity<>(order, HttpStatus.OK);
     }
+
+    @GetMapping("/orders")
+    @Operation(summary = "List user orders", description = "Returns a paginated list of orders that belong to the authenticated user.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Seller orders returned successfully",
+                    content = @Content(schema = @Schema(implementation = OrderResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
+    public ResponseEntity<OrderResponse> getAllUserOrders(
+            @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER, required = false) Integer pageNumber,
+            @RequestParam(name = "pageSize", defaultValue = AppConstants.PAGE_SIZE, required = false) Integer pageSize,
+            @RequestParam(name = "sortBy", defaultValue = AppConstants.SORT_ORDERS_NAME, required = false) String sortBy,
+            @RequestParam(name = "sortOrder", defaultValue = AppConstants.SORT_DIR, required = false) String sortOrder
+    ) {
+        OrderResponse response = orderService.getAllUserOrders(pageNumber, pageSize, sortBy, sortOrder);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
 }
