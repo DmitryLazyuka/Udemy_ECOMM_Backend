@@ -8,4 +8,5 @@ public class AppConstants {
     public static final String SORT_PRODUCTS_BY = "productName";
     public static final String SORT_ORDERS_NAME = "id";
     public static final String SORT_USERS_BY = "userId";
+    public static final String PRODUCTS_PAGE_SIZE = "8";
 }

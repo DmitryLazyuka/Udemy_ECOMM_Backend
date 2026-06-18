@@ -2,6 +2,7 @@ package org.example.udemyproject.service;
 
 import org.example.udemyproject.exceptions.APIException;
 import org.example.udemyproject.exceptions.ResourceNotFoundException;
+import org.example.udemyproject.mapper.ProductMapper;
 import org.example.udemyproject.model.Cart;
 import org.example.udemyproject.model.Category;
 import org.example.udemyproject.model.Product;
@@ -28,6 +29,7 @@ import java.util.List;
 
 @Service
 public class ProductServiceImpl implements ProductService {
+    private final ProductMapper productMapper;
     @Value("${image.base.url}")
     private String imageBaseUrl;
 
@@ -48,7 +50,7 @@ public class ProductServiceImpl implements ProductService {
                               FileService fileService,
                               CartRepository cartRepository,
                               CartService cartService,
-                              AuthUtil authUtil) {
+                              AuthUtil authUtil, ProductMapper productMapper) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.modelMapper = modelMapper;
@@ -56,6 +58,7 @@ public class ProductServiceImpl implements ProductService {
         this.cartRepository = cartRepository;
         this.cartService = cartService;
         this.authUtil = authUtil;
+        this.productMapper = productMapper;
     }
 
     @Override
@@ -279,12 +282,6 @@ public class ProductServiceImpl implements ProductService {
         return buildProductResponse(productPage, productDTOS);
     }
 
-    private String constructImageUrl(String imageName) {
-        return imageBaseUrl.endsWith("/")
-                ? imageBaseUrl + imageName
-                : imageBaseUrl + "/" + imageName;
-    }
-
     private Double countSpecialPrice(Double price, Double discount) {
         return price - ((discount * 0.01) * price);
     }
@@ -301,13 +298,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private ProductDTO mapProduct(Product product, boolean includeImageUrl) {
-        ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
-
         if (includeImageUrl) {
-            productDTO.setImage(constructImageUrl(product.getImage()));
+            return productMapper.toDTO(product);
         }
 
-        return productDTO;
+        return modelMapper.map(product, ProductDTO.class);
     }
 
     private ProductResponse buildProductResponse(Page<Product> productPage,

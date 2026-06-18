@@ -60,7 +60,7 @@ public class ProductController {
             @RequestParam(name="keyword", required = false) String keyword,
             @RequestParam(name="category", required = false) String category,
             @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER, required = false) Integer pageNumber,
-            @RequestParam(name = "pageSize", defaultValue = AppConstants.PAGE_SIZE, required = false) Integer pageSize,
+            @RequestParam(name = "pageSize", defaultValue = AppConstants.PRODUCTS_PAGE_SIZE, required = false) Integer pageSize,
             @RequestParam(name = "sortBy", defaultValue = AppConstants.SORT_PRODUCTS_BY, required = false) String sortBy,
             @RequestParam(name = "sortOrder", defaultValue = AppConstants.SORT_DIR, required = false) String sortOrder) {
         ProductResponse response = productService.getAllProducts(pageNumber, pageSize, sortBy, sortOrder, keyword, category);
@@ -79,7 +79,7 @@ public class ProductController {
     public ResponseEntity<ProductResponse> getProductsByCategory(
             @PathVariable Long categoryId,
             @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER, required = false) Integer pageNumber,
-            @RequestParam(name = "pageSize", defaultValue = AppConstants.PAGE_SIZE, required = false) Integer pageSize,
+            @RequestParam(name = "pageSize", defaultValue = AppConstants.PRODUCTS_PAGE_SIZE, required = false) Integer pageSize,
             @RequestParam(name = "sortBy", defaultValue = AppConstants.SORT_PRODUCTS_BY, required = false) String sortBy,
             @RequestParam(name = "sortOrder", defaultValue = AppConstants.SORT_DIR, required = false) String sortOrder) {
         ProductResponse response = productService.searchByCategory(categoryId, pageNumber, pageSize, sortBy, sortOrder);
@@ -96,7 +96,7 @@ public class ProductController {
     public ResponseEntity<ProductResponse> getProductsByKeyword(
             @PathVariable String keyword,
             @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER, required = false) Integer pageNumber,
-            @RequestParam(name = "pageSize", defaultValue = AppConstants.PAGE_SIZE, required = false) Integer pageSize,
+            @RequestParam(name = "pageSize", defaultValue = AppConstants.PRODUCTS_PAGE_SIZE, required = false) Integer pageSize,
             @RequestParam(name = "sortBy", defaultValue = AppConstants.SORT_CATEGORIES_BY, required = false) String sortBy,
             @RequestParam(name = "sortOrder", defaultValue = AppConstants.SORT_DIR, required = false) String sortOrder) {
         ProductResponse response = productService.searchProductsByKeyword(keyword, pageNumber, pageSize, sortBy, sortOrder);
@@ -164,7 +164,7 @@ public class ProductController {
     })
     public ResponseEntity<ProductResponse> getAllProductsForAdmin(
             @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER, required = false) Integer pageNumber,
-            @RequestParam(name = "pageSize", defaultValue = AppConstants.PAGE_SIZE, required = false) Integer pageSize,
+            @RequestParam(name = "pageSize", defaultValue = AppConstants.PRODUCTS_PAGE_SIZE, required = false) Integer pageSize,
             @RequestParam(name = "sortBy", defaultValue = AppConstants.SORT_PRODUCTS_BY, required = false) String sortBy,
             @RequestParam(name = "sortOrder", defaultValue = AppConstants.SORT_DIR, required = false) String sortOrder) {
         ProductResponse response = productService.getAllProductsForAdmin(pageNumber, pageSize, sortBy, sortOrder);
@@ -181,7 +181,7 @@ public class ProductController {
     })
     public ResponseEntity<ProductResponse> getAllProductsForSeller(
             @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER, required = false) Integer pageNumber,
-            @RequestParam(name = "pageSize", defaultValue = AppConstants.PAGE_SIZE, required = false) Integer pageSize,
+            @RequestParam(name = "pageSize", defaultValue = AppConstants.PRODUCTS_PAGE_SIZE, required = false) Integer pageSize,
             @RequestParam(name = "sortBy", defaultValue = AppConstants.SORT_PRODUCTS_BY, required = false) String sortBy,
             @RequestParam(name = "sortOrder", defaultValue = AppConstants.SORT_DIR, required = false) String sortOrder) {
         ProductResponse response = productService.getAllProductsForSeller(pageNumber, pageSize, sortBy, sortOrder);

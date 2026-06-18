@@ -2,6 +2,7 @@ package org.example.udemyproject.service;
 
 import org.example.udemyproject.exceptions.APIException;
 import org.example.udemyproject.exceptions.ResourceNotFoundException;
+import org.example.udemyproject.mapper.ProductMapper;
 import org.example.udemyproject.model.Cart;
 import org.example.udemyproject.model.CartItem;
 import org.example.udemyproject.model.Product;
@@ -26,17 +27,20 @@ public class CartServiceImpl implements CartService {
     private final AuthUtil authUtil;
     private final ModelMapper modelMapper;
     private final ProductRepository productRepository;
+    private final ProductMapper productMapper;
 
     public CartServiceImpl(CartItemRepository cartItemRepository,
                            CartRepository cartRepository,
                            AuthUtil authUtil,
                            ModelMapper modelMapper,
-                           ProductRepository productRepository) {
+                           ProductRepository productRepository,
+                           ProductMapper productMapper) {
         this.cartItemRepository = cartItemRepository;
         this.cartRepository = cartRepository;
         this.authUtil = authUtil;
         this.modelMapper = modelMapper;
         this.productRepository = productRepository;
+        this.productMapper = productMapper;
     }
 
     @Override
@@ -253,7 +257,7 @@ public class CartServiceImpl implements CartService {
     }
 
     private ProductDTO mapProduct(Product product, Integer quantity) {
-        ProductDTO productDTO = modelMapper.map(product, ProductDTO.class);
+        ProductDTO productDTO = productMapper.toDTO(product);
         productDTO.setQuantity(quantity);
         return productDTO;
     }
